@@ -1,0 +1,191 @@
+REDIS CHEATSHEET
+
+<-------------------------------------------------------------------------------------------->
+
+-KEYS:
+	- unique
+	- binary safe
+	- upto 512MB key size
+	--------
+	set -> set a key (set name ram) (set age 10)
+	exists -> check if a key exists (exists name)
+	get -> get a key (get name)
+	keys -> list all keys (better for debugging) (keys pattern)
+	scan -> list all keys (better for production) (scan cursor Match Pattern)
+	del -> deleting a key (synchronous) (del name)
+	unlink -> deleting a key (asynchronous) (unlink name)
+	flushall -> removes all keys (flushall)
+	type -> to check datatype of structure stored at the key (type name)
+	object -> to check encoding of value (object encoding name)
+	---------
+	In case of "set" we have parameters:
+		-NX: the key doesnot exists (setting new key)
+		-XX: the key already exists (updating the key)
+
+	---------
+	Expiration of a key:
+	- set (If key doesn't exists):
+		- px: miliseconds
+		- ex: seconds
+		eg: 
+			- set ram 5 px 50000 (milisec)
+	    		- set ram 5 ex 50  (sec)
+			(both are same)
+	- pexpire (if key already exists):
+		eg:
+			- pexpire ram 5 (sec)
+	- ttl (check expiry)
+		eg:
+			- ttl ram (sec)
+	- pttl (check expiry)
+		eg: 
+			- pttl ram (milisec)
+		
+		output: 
+			-1 -> has no expiration
+			-2 -> expired and no longer exists 
+	- persist (remove expiry)
+		eg: 
+			- persists ram
+
+<-------------------------------------------------------------------------------------------->
+
+- STRING:
+	- Most common uses:
+		- can store strings, numerical values, serialized JSON and binary
+		- for caching: API response, Session storage , HTML pages 
+		- for implementing counters
+		- commonly used for caching when combined with EXPIRE
+		- can be used to store and manipulate numerical values
+		- Maximum of 512MB for value size
+		- content of STRING can be changed between string, number , binary or any at any point for same key
+		
+	-------------	
+	- setting and getting a string same as above
+	- expiry is also same
+
+	-------------
+	For implementing counters:
+		- INCR (increases by  1)
+			eg: (If a key doesn't exists INCR will consider it's value to 0 and increment by 1 providing 1 as result)
+				- Exists name (output: 0 , as name doesn't exists)
+				- INCR name ( output: 1, considers 0 as initial value and increases by 1)
+				- INCR name (output: 2)
+
+		- INCRBY (increase by given value)
+			eg: (If a key doesn't exists INCRBY will create a new key and assing the given increment by value)
+				- INCRBY age 10 (if age was initially 10 , it will be updated to 20, if age doesn't exists it will be iinitialized as 10)
+
+				- INCRBY age -10 (subtracts 10 from age )
+
+		- DECR (decreases by 1) (opposite of INCR)
+		- DECRBY (decreases by given value) (opposite of INCRBY)
+
+
+		- INCRBYFLOAT (to manipulate floating integers)
+
+<-------------------------------------------------------------------------------------------------->
+
+- Hashes:
+	- just like json or object
+	- use cases:
+		- rate limiting
+		- session cache
+	- terms:
+		- key: name of object
+		- field: variable name for value
+		- value: value of field 
+	- time complexity: O(n) for 'HGETALL' & 'HSCAN'  and O(1) for others
+
+	- setting a hash:
+		- HSET || HMSET || HSETNX:
+			eg: HSET player:42 name ram age 22 hobby biking (HSET key field value field value)
+	- getting hash:
+		- HGETALL (get all fields):
+			eg: HGETALL player:42 (HGETALL key)
+		- HSCAN (get fileds with matching pattern or cursor):
+			eg: HSCAN player:42 0 match nam*
+		- HGET (get a single field):
+			eg: HGET player:42 age
+		- HMGET (get multiple fileds)
+			eg: HMGET player:42 name age
+	- update field:
+		- HSET: 
+			eg: HSET player:42 height 5.9 (we can either set a new filed of update existsing)
+	- delete a field:
+		- HDEL: 
+			eg: HDEL player:42 height
+	- increment a filed value:
+		- HINCRBY:
+			eg: HINCRBY player:42 age 12 (increase age by 12)
+		- HINCRBYFLOAT (to manipulate floating integers)
+	- check if a filed exists:
+		- HEXISTS: 
+			eg: HEXISTS player:42 name
+	- get all keys
+		- HKEYS player:42
+	- get all values
+		- HVALS player:42
+
+<-------------------------------------------------------------------------------------------------->
+
+- LISTS: (similar like JS arrays)
+
+	- ordered collection of string
+	- duplicates are allowed
+	- elements can be added or removed from both side
+	- elements can be added relative to anoter
+	- used to implement stacks and queues
+	- are not nested
+	- implemented as a doubly linked list
+ 
+	------------------------------------
+
+	- use cases:
+		- activity stream
+		- IPC
+		
+	------------------------------------
+
+	- time complexity
+		- 'LPOP', 'RPUSH' and 'LLEN' are O(1) 
+		- 'LRANGE' is O(s+n)  (here s = start distance offset  from head and n = no of items )
+
+	-----------------------------------
+
+	
+	- adding element to list 
+		- RPUSH (righthandside or last)
+			eg: RPUSH playlist 25
+		- LPUSH (lefthandside or front)
+			eg: LPUSH playlist 21
+
+	- removing element from list
+		- LPOP (lefthandside or front)
+			eg: LPOP playlist
+		- RPOP (righthandside or last)
+			eg: RPOP playlist
+
+	- get items in range
+		- LRANGE
+			eg: LRANGE playlist 0 4(to get first 5 elements from list)
+			    LRANGE playlist 0 -1 (to get items from start to end or all items in list)
+	- get length of list
+		- LLEN
+			eg: LLEN playlist
+	- get item from particular index
+		- LINDEX 
+			eg: LINDEX playlist 2 (to get 3rd item in list)
+	- update item of particular index
+		- LSET
+			eg: LSET playlist 1 kevin:10 (to update value of index 1 with kevin:10)
+	- add item before or after a particular item
+		- LINSERT
+			eg: LINSERT playlist before | after kevin madan (here 'kevin' is the value  and 'madan' is inserted before | after 'kevin')
+	- removing a particular item
+		- LREM
+			eg: LREM playlist 2 ram (here 2 is the count and 'ram' is the value to be removed, provided 0 as count to remove all values and values should be matched exactly and pattern doesn't works)
+
+	- trimming a list
+		- LTRIM
+			eg: LTRIM playlist 1 3 (to keep elements from index 1 to 3 and remove other )
